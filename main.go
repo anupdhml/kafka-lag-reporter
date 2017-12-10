@@ -73,6 +73,15 @@ func main() {
 	}
 	defer logClose("partition offset manager", pom)
 
-	groupOff, _ := pom.NextOffset()
-	fmt.Println(groupOff)
+	groupOffset, _ := pom.NextOffset()
+	fmt.Println(groupOffset)
+
+	producerOffset, err := client.GetOffset(topic, partition, sarama.OffsetNewest)
+	if err != nil {
+		failf("failed to get offset for topic=%s partition=%d err=%v", topic, partition, err)
+	}
+	fmt.Println(producerOffset)
+
+	lag := producerOffset - groupOffset
+	fmt.Println(lag)
 }
