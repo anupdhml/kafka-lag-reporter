@@ -9,8 +9,10 @@ import (
 )
 
 type partitionOwner struct {
-	Id   string
-	Host string
+	Id     string
+	HostIp string
+	// TODO implement reverse DNS lookup for this field
+	//HostName string
 }
 
 func failf(msg string, args ...interface{}) {
@@ -75,6 +77,8 @@ func main() {
 
 	group := "moawsl_weblog_elk"
 	//group := "applog_elk"
+	//group := "syslog_elk"
+	//group := "elk_dev_ingest"
 
 	coordinator, err := client.Coordinator(group)
 	if err != nil {
@@ -113,17 +117,21 @@ func main() {
 	//os.Exit(0)
 
 	for _, groupInfo := range response.Groups {
-		//err := (*groupInfo).Err
+		err := (*groupInfo).Err
 		state := (*groupInfo).State
 		members := (*groupInfo).Members
 
-		fmt.Println(state)
+		if err != sarama.ErrNoError {
+			failf("group %s has errors err=%v", group, err)
+		}
+
+		fmt.Fprintf(os.Stderr, "group=%s is in state=%s\n", group, state)
 
 		for _, memberInfo := range members {
-			fmt.Println("\n")
+			//fmt.Println("\n")
 
 			//fmt.Println(k)
-			fmt.Println(memberInfo.ClientId, memberInfo.ClientHost)
+			//fmt.Println(memberInfo.ClientId, memberInfo.ClientHost)
 
 			//memberMetadata, _ := memberInfo.GetMemberMetadata()
 			//fmt.Println(*memberMetadata)
@@ -134,10 +142,10 @@ func main() {
 			// TODO don't dereference here for later
 			memberTopics := (*memberAssignment).Topics
 			for topic, partitions := range memberTopics {
-				fmt.Println(topic, partitions)
+				//fmt.Println(topic, partitions)
 
 				for _, partition := range partitions {
-					fmt.Println(partition)
+					//fmt.Println(partition)
 
 					_, ok := topicOwners[topic]
 					if !ok {
@@ -149,24 +157,23 @@ func main() {
 						memberInfo.ClientHost,
 					}
 
-					fmt.Println(topicOwners)
+					//fmt.Println(topicOwners)
 				}
 
-				fmt.Println(topicOwners)
+				//fmt.Println(topicOwners)
 			}
 		}
 	}
-
-	fmt.Println("\n")
-	fmt.Println(topicOwners)
+	//fmt.Println(topicOwners)
 
 	topicPartitions := map[string][]int32{}
 	for topic := range topicOwners {
 		partitions := fetchPartitions(&client, topic)
+		// TODO convert to debug log
 		fmt.Fprintf(os.Stderr, "found partitions=%v for topic=%v\n", partitions, topic)
 		topicPartitions[topic] = partitions
 	}
-	fmt.Println(topicPartitions)
+	//fmt.Println(topicPartitions)
 
 	offsetManager, err := sarama.NewOffsetManagerFromClient(group, client)
 	if err != nil {
@@ -175,6 +182,8 @@ func main() {
 	defer logClose("offset manager", offsetManager)
 
 	for topic, partitions := range topicPartitions {
+		fmt.Println("")
+
 		for _, partition := range partitions {
 			//fmt.Println(topic, partition)
 
@@ -201,7 +210,7 @@ func main() {
 				failf("failed to get owner for topic=%s partition=%d", topic, partition)
 			}
 
-			fmt.Println(group, topic, partition, groupOffset, producerOffset, lag, partitionOwner.Id, partitionOwner.Host)
+			fmt.Println(group, topic, partition, groupOffset, producerOffset, lag, partitionOwner.Id, partitionOwner.HostIp)
 		}
 	}
 
