@@ -66,13 +66,12 @@ func main() {
 
 	group := "moawsl_weblog_elk"
 
-	offsetManager, err := sarama.NewOffsetManagerFromClient(group, client)
-	if err != nil {
-		failf("failed to create offsetManager err=%v", err)
-	}
-	defer logClose("offset manager", offsetManager)
-
 	topics := []string{"moawsl_dev"}
+	//var topics []string
+	//topics = client.Topics()
+	//topics, err := client.Topics()
+	//fmt.Println(topics)
+	//os.Exit(0)
 
 	topicPartitions := map[string][]int32{}
 	for _, topic := range topics {
@@ -81,6 +80,12 @@ func main() {
 		topicPartitions[topic] = partitions
 	}
 	//fmt.Println(topicPartitions)
+
+	offsetManager, err := sarama.NewOffsetManagerFromClient(group, client)
+	if err != nil {
+		failf("failed to create offsetManager err=%v", err)
+	}
+	defer logClose("offset manager", offsetManager)
 
 	for topic, partitions := range topicPartitions {
 		for _, partition := range partitions {
