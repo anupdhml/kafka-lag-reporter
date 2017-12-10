@@ -198,7 +198,12 @@ func main() {
 			lag := producerOffset - groupOffset
 			//fmt.Println(lag)
 
-			fmt.Println(group, topic, partition, groupOffset, producerOffset, lag)
+			partitionOwner, ok := topicOwners[topic][partition]
+			if !ok {
+				failf("failed to get owner for topic=%s partition=%d", topic, partition)
+			}
+
+			fmt.Println(group, topic, partition, groupOffset, producerOffset, lag, partitionOwner.Id, partitionOwner.Host)
 		}
 	}
 
