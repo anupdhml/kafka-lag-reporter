@@ -45,6 +45,10 @@ func main() {
 	}
 
 	config := sarama.NewConfig()
+
+	// required for broker centric requests
+	// we are on 0.10.1.1. this is the closes sarama provides
+	config.Version = sarama.V0_10_1_0
 	//config.Version = 'placeholder'
 	//config.ClientID = 'wf_kafka_lag_exporter'
 	// set to false and try?
@@ -93,7 +97,7 @@ func main() {
 	if err != nil {
 		failf("failed to get group info for groups=%s err=%v", groups, err)
 	}
-	fmt.Println(groupInfo)
+	fmt.Println(*groupInfo)
 
 	//os.Exit(0)
 
