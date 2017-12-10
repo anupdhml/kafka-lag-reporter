@@ -28,11 +28,11 @@ func fetchPartitions(client *sarama.Client, topic string) []int32 {
 }
 
 func main() {
-	//groups := []string{
-	//"moawsl_weblog_elk",
-	//"applog_elk",
-	//"syslog_elk",
-	//}
+	groups := []string{
+		"moawsl_weblog_elk",
+		//"applog_elk",
+		//"syslog_elk",
+	}
 
 	//fmt.Println(groups)
 	//os.Exit(0)
@@ -66,15 +66,41 @@ func main() {
 
 	group := "moawsl_weblog_elk"
 
-	topics := []string{"moawsl_dev"}
-	//var topics []string
-	//topics = client.Topics()
-	//topics, err := client.Topics()
-	//fmt.Println(topics)
+	coordinator, err := client.Coordinator(group)
+	if err != nil {
+		failf("failed to get coordinating broker for group=%s err=%v", group, err)
+	}
+
+	//apiVersions, _ := (*coordinator).ApiVersions(&sarama.ApiVersionsRequest{})
+	//fmt.Println(apiVersions)
 	//os.Exit(0)
 
+	//c, err := (*coordinator).Connected()
+	//fmt.Println(c, err)
+
+	//r, err := (*coordinator).GetConsumerMetadata(&sarama.ConsumerMetadataRequest{
+	//group,
+	//})
+	//fmt.Println(r, err)
+
+	//r, err := (*coordinator).ListGroups(&sarama.ListGroupsRequest{})
+	//fmt.Println(r, err)
+
+	groupInfo, err := (*coordinator).DescribeGroups(&sarama.DescribeGroupsRequest{
+		//[]string{group},
+		groups,
+	})
+	if err != nil {
+		failf("failed to get group info for groups=%s err=%v", groups, err)
+	}
+	fmt.Println(groupInfo)
+
+	//os.Exit(0)
+
+	groupTopics := []string{"moawsl_dev"}
+
 	topicPartitions := map[string][]int32{}
-	for _, topic := range topics {
+	for _, topic := range groupTopics {
 		partitions := fetchPartitions(&client, topic)
 		fmt.Fprintf(os.Stderr, "found partitions=%v for topic=%v\n", partitions, topic)
 		topicPartitions[topic] = partitions
