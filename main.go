@@ -28,11 +28,11 @@ func fetchPartitions(client *sarama.Client, topic string) []int32 {
 }
 
 func main() {
-	groups := []string{
-		"moawsl_weblog_elk",
-		//"applog_elk",
-		//"syslog_elk",
-	}
+	//groups := []string{
+	//"moawsl_weblog_elk",
+	//"applog_elk",
+	//"syslog_elk",
+	//}
 
 	//fmt.Println(groups)
 	//os.Exit(0)
@@ -75,13 +75,6 @@ func main() {
 		failf("failed to get coordinating broker for group=%s err=%v", group, err)
 	}
 
-	//apiVersions, _ := (*coordinator).ApiVersions(&sarama.ApiVersionsRequest{})
-	//fmt.Println(apiVersions)
-	//os.Exit(0)
-
-	//c, err := (*coordinator).Connected()
-	//fmt.Println(c, err)
-
 	//r, err := (*coordinator).GetConsumerMetadata(&sarama.ConsumerMetadataRequest{
 	//group,
 	//})
@@ -90,14 +83,27 @@ func main() {
 	//r, err := (*coordinator).ListGroups(&sarama.ListGroupsRequest{})
 	//fmt.Println(r, err)
 
-	groupInfo, err := (*coordinator).DescribeGroups(&sarama.DescribeGroupsRequest{
-		//[]string{group},
-		groups,
+	response, err := (*coordinator).DescribeGroups(&sarama.DescribeGroupsRequest{
+		[]string{group},
+		// other groups may have different coordinator
+		//groups,
 	})
 	if err != nil {
-		failf("failed to get group info for groups=%s err=%v", groups, err)
+		failf("failed to get group info for group=%s err=%v", group, err)
 	}
-	fmt.Println(*groupInfo)
+
+	for _, groupInfo := range response.Groups {
+		//err := (*groupInfo).Err
+		state := (*groupInfo).State
+
+		fmt.Println(state)
+
+		for _, memberInfo := range (*groupInfo).Members {
+			//fmt.Println(k)
+			fmt.Println(memberInfo.ClientId, memberInfo.ClientHost)
+			//fmt.Println(memberInfo.MemberMetadata, memberInfo.MemberAssignment)
+		}
+	}
 
 	//os.Exit(0)
 
