@@ -155,20 +155,18 @@ func main() {
 				fmt.Println(topicOwners)
 			}
 		}
-
-		fmt.Println("\n")
 	}
+
+	fmt.Println("\n")
 	fmt.Println(topicOwners)
 
-	groupTopics := []string{"moawsl_dev"}
-
 	topicPartitions := map[string][]int32{}
-	for _, topic := range groupTopics {
+	for topic := range topicOwners {
 		partitions := fetchPartitions(&client, topic)
 		fmt.Fprintf(os.Stderr, "found partitions=%v for topic=%v\n", partitions, topic)
 		topicPartitions[topic] = partitions
 	}
-	//fmt.Println(topicPartitions)
+	fmt.Println(topicPartitions)
 
 	offsetManager, err := sarama.NewOffsetManagerFromClient(group, client)
 	if err != nil {
