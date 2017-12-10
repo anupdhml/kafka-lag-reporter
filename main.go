@@ -69,6 +69,7 @@ func main() {
 	//}
 
 	group := "moawsl_weblog_elk"
+	//group := "applog_elk"
 
 	coordinator, err := client.Coordinator(group)
 	if err != nil {
@@ -95,17 +96,27 @@ func main() {
 	for _, groupInfo := range response.Groups {
 		//err := (*groupInfo).Err
 		state := (*groupInfo).State
+		members := (*groupInfo).Members
 
 		fmt.Println(state)
 
-		for _, memberInfo := range (*groupInfo).Members {
+		for _, memberInfo := range members {
 			//fmt.Println(k)
 			fmt.Println(memberInfo.ClientId, memberInfo.ClientHost)
-			//fmt.Println(memberInfo.MemberMetadata, memberInfo.MemberAssignment)
+
+			//memberMetadata, _ := memberInfo.GetMemberMetadata()
+			//fmt.Println(*memberMetadata)
+
+			// TODO catch the error here
+			memberAssignment, _ := memberInfo.GetMemberAssignment()
+
+			// TODO don't dereference here for later
+			memberTopics := (*memberAssignment).Topics
+			for topic, partitions := range memberTopics {
+				fmt.Println(topic, partitions)
+			}
 		}
 	}
-
-	//os.Exit(0)
 
 	groupTopics := []string{"moawsl_dev"}
 
