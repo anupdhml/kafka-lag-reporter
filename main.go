@@ -8,6 +8,11 @@ import (
 	"github.com/Shopify/sarama"
 )
 
+type partitionOwner struct {
+	Id   string
+	Host string
+}
+
 func failf(msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg+"\n", args...)
 	os.Exit(1)
@@ -93,6 +98,20 @@ func main() {
 		failf("failed to get group info for group=%s err=%v", group, err)
 	}
 
+	//topicOwners := make(map[string]map[int32]string)
+	topicOwners := make(map[string]map[int32]partitionOwner)
+
+	//test := map[int32]partitionOwner{
+	//int32(0): partitionOwner{"logstash", "host"},
+	//}
+	//fmt.Println(test)
+	//topicOwners["moawsl_dev"] = test
+
+	//topicOwners["moawsl_dev2"][int32(0)] = partitionOwner{"logstash", "host"}
+
+	//fmt.Println(topicOwners)
+	//os.Exit(0)
+
 	for _, groupInfo := range response.Groups {
 		//err := (*groupInfo).Err
 		state := (*groupInfo).State
@@ -101,6 +120,8 @@ func main() {
 		fmt.Println(state)
 
 		for _, memberInfo := range members {
+			fmt.Println("\n")
+
 			//fmt.Println(k)
 			fmt.Println(memberInfo.ClientId, memberInfo.ClientHost)
 
@@ -114,9 +135,30 @@ func main() {
 			memberTopics := (*memberAssignment).Topics
 			for topic, partitions := range memberTopics {
 				fmt.Println(topic, partitions)
+
+				for _, partition := range partitions {
+					fmt.Println(partition)
+
+					_, ok := topicOwners[topic]
+					if !ok {
+						topicOwners[topic] = make(map[int32]partitionOwner)
+					}
+
+					topicOwners[topic][partition] = partitionOwner{
+						memberInfo.ClientId,
+						memberInfo.ClientHost,
+					}
+
+					fmt.Println(topicOwners)
+				}
+
+				fmt.Println(topicOwners)
 			}
 		}
+
+		fmt.Println("\n")
 	}
+	fmt.Println(topicOwners)
 
 	groupTopics := []string{"moawsl_dev"}
 
