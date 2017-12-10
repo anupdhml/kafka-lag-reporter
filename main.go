@@ -19,6 +19,14 @@ func logClose(name string, c io.Closer) {
 	}
 }
 
+func fetchPartitions(client *sarama.Client, topic string) []int32 {
+	partitions, err := (*client).Partitions(topic)
+	if err != nil {
+		failf("failed to read partitions for topic=%s err=%v", topic, err)
+	}
+	return partitions
+}
+
 func main() {
 	//groups := []string{
 	//"moawsl_weblog_elk",
@@ -64,24 +72,40 @@ func main() {
 	}
 	defer logClose("offset manager", offsetManager)
 
-	topic := "moawsl_dev"
-	partition := int32(0)
+	topics := []string{"moawsl_dev"}
 
-	pom, err := offsetManager.ManagePartition(topic, partition)
-	if err != nil {
-		failf("failed to manage partition group=%s topic=%s partition=%d err=%v", group, topic, partition, err)
+	topicPartitions := map[string][]int32{}
+	for _, topic := range topics {
+		partitions := fetchPartitions(&client, topic)
+		fmt.Fprintf(os.Stderr, "found partitions=%v for topic=%v\n", partitions, topic)
+		topicPartitions[topic] = partitions
 	}
-	defer logClose("partition offset manager", pom)
+	//fmt.Println(topicPartitions)
 
-	groupOffset, _ := pom.NextOffset()
-	fmt.Println(groupOffset)
+	for topic, partitions := range topicPartitions {
+		for _, partition := range partitions {
+			//fmt.Println(topic, partition)
 
-	producerOffset, err := client.GetOffset(topic, partition, sarama.OffsetNewest)
-	if err != nil {
-		failf("failed to get offset for topic=%s partition=%d err=%v", topic, partition, err)
+			pom, err := offsetManager.ManagePartition(topic, partition)
+			if err != nil {
+				failf("failed to manage partition group=%s topic=%s partition=%d err=%v", group, topic, partition, err)
+			}
+			defer logClose("partition offset manager", pom)
+
+			groupOffset, _ := pom.NextOffset()
+			//fmt.Println(groupOffset)
+
+			producerOffset, err := client.GetOffset(topic, partition, sarama.OffsetNewest)
+			if err != nil {
+				failf("failed to get offset for topic=%s partition=%d err=%v", topic, partition, err)
+			}
+			//fmt.Println(producerOffset)
+
+			lag := producerOffset - groupOffset
+			//fmt.Println(lag)
+
+			fmt.Println(group, topic, partition, groupOffset, producerOffset, lag)
+		}
 	}
-	fmt.Println(producerOffset)
 
-	lag := producerOffset - groupOffset
-	fmt.Println(lag)
 }
