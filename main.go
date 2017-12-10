@@ -1,9 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/Shopify/sarama"
 )
@@ -35,21 +37,29 @@ func fetchPartitions(client *sarama.Client, topic string) []int32 {
 }
 
 func main() {
-	//groups := []string{
-	//"moawsl_weblog_elk",
-	//"applog_elk",
-	//"syslog_elk",
-	//}
+	bootstrapServersArg := flag.String("bootstrap-servers", "localhost:9092", "Kafka broker(s) to bootstrap the connection")
+	groupsArg := flag.String("groups", "", "Consumer groups we wish to report on")
 
-	//fmt.Println(groups)
-	//os.Exit(0)
+	flag.Parse()
 
-	//bootstrapBrokers := "kafkac1n1.dev.bo1.csnzoo.com:9092,kafkac1n2.dev.bo1.csnzoo.com:9092,kafkac1n3.dev.bo1.csnzoo.com:9092"
-	bootstrapBrokers := []string{
-		//"kafkac1n1.dev.bo1.csnzoo.com:9092",
-		"kafkac1n2.dev.bo1.csnzoo.com:9092",
-		"kafkac1n3.dev.bo1.csnzoo.com:9092",
+	if *groupsArg == "" {
+		fmt.Fprintf(os.Stderr, "No consumer groups specified. Exiting...\n")
+		os.Exit(1)
 	}
+
+	//fmt.Println(*bootstrapServersArg, *groupsArg)
+
+	bootstrapServers := strings.Split(*bootstrapServersArg, ",")
+	groups := strings.Split(*groupsArg, ",")
+	//fmt.Println(bootstrapServers)
+	//fmt.Println(groups)
+
+	//bootstrapServers := "kafkac1n1.dev.bo1.csnzoo.com:9092,kafkac1n2.dev.bo1.csnzoo.com:9092,kafkac1n3.dev.bo1.csnzoo.com:9092"
+	//bootstrapServers := []string{
+	////"kafkac1n1.dev.bo1.csnzoo.com:9092",
+	//"kafkac1n2.dev.bo1.csnzoo.com:9092",
+	//"kafkac1n3.dev.bo1.csnzoo.com:9092",
+	//}
 
 	config := sarama.NewConfig()
 
@@ -61,12 +71,11 @@ func main() {
 	// set to false and try?
 	//fmt.Println(config.Metadata.Full)
 
-	client, err := sarama.NewClient(bootstrapBrokers, config)
-	defer client.Close()
-
+	client, err := sarama.NewClient(bootstrapServers, config)
 	if err != nil {
 		failf("failed to create client err=%v", err)
 	}
+	defer client.Close()
 
 	brokers := client.Brokers()
 	fmt.Fprintf(os.Stderr, "found %v brokers\n", len(brokers))
@@ -75,10 +84,11 @@ func main() {
 	//fmt.Println(group)
 	//}
 
-	group := "moawsl_weblog_elk"
+	//group := "moawsl_weblog_elk"
 	//group := "applog_elk"
 	//group := "syslog_elk"
 	//group := "elk_dev_ingest"
+	group := groups[0]
 
 	coordinator, err := client.Coordinator(group)
 	if err != nil {
