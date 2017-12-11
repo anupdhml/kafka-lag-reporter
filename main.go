@@ -37,8 +37,11 @@ func fetchPartitions(client *sarama.Client, topic string) []int32 {
 }
 
 func main() {
-	bootstrapServersArg := flag.String("bootstrap-servers", "localhost:9092", "Kafka broker(s) to bootstrap the connection")
+	// TODO separate all this stuff out into separate functions
+
 	groupsArg := flag.String("groups", "", "Consumer groups we wish to report on")
+	bootstrapServersArg := flag.String("bootstrap-servers", "localhost:9092", "Kafka broker(s) to bootstrap the connection")
+	//fmt.Println(*groupsArg, *bootstrapServersArg)
 
 	flag.Parse()
 
@@ -47,29 +50,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	//fmt.Println(*bootstrapServersArg, *groupsArg)
-
-	bootstrapServers := strings.Split(*bootstrapServersArg, ",")
 	groups := strings.Split(*groupsArg, ",")
-	//fmt.Println(bootstrapServers)
-	//fmt.Println(groups)
+	bootstrapServers := strings.Split(*bootstrapServersArg, ",")
+	//fmt.Println(groups, bootstrapServers)
 
-	//bootstrapServers := "kafkac1n1.dev.bo1.csnzoo.com:9092,kafkac1n2.dev.bo1.csnzoo.com:9092,kafkac1n3.dev.bo1.csnzoo.com:9092"
-	//bootstrapServers := []string{
-	////"kafkac1n1.dev.bo1.csnzoo.com:9092",
-	//"kafkac1n2.dev.bo1.csnzoo.com:9092",
-	//"kafkac1n3.dev.bo1.csnzoo.com:9092",
-	//}
+	// -----------------------------------------------------------------------
 
 	config := sarama.NewConfig()
 
 	// required for broker centric requests
 	// we are on 0.10.1.1. this is the closes sarama provides
 	config.Version = sarama.V0_10_1_0
-	//config.Version = 'placeholder'
+
 	//config.ClientID = 'wf_kafka_lag_exporter'
-	// set to false and try?
-	//fmt.Println(config.Metadata.Full)
+
+	// TODO try with false here. Default is true
+	//config.Metadata.Full = false
 
 	client, err := sarama.NewClient(bootstrapServers, config)
 	if err != nil {
@@ -77,54 +73,39 @@ func main() {
 	}
 	defer client.Close()
 
-	brokers := client.Brokers()
-	fmt.Fprintf(os.Stderr, "found %v brokers\n", len(brokers))
+	//brokers := client.Brokers()
+	//fmt.Fprintf(os.Stderr, "found %v brokers\n", len(brokers))
 
+	// -----------------------------------------------------------------------
+
+	// TODO implement for multiple groups
+	group := groups[0]
 	//for _, group := range groups {
 	//fmt.Println(group)
 	//}
 
-	//group := "moawsl_weblog_elk"
-	//group := "applog_elk"
-	//group := "syslog_elk"
-	//group := "elk_dev_ingest"
-	group := groups[0]
+	// implement for all groups in the cluster maybe
+	//response, err := (*coordinator).ListGroups(&sarama.ListGroupsRequest{})
+	//fmt.Println(response, err)
+
+	// -----------------------------------------------------------------------
+
+	// mapping partitions for each topic to their owners. more types here maybe...
+	topicOwners := make(map[string]map[int32]partitionOwner)
 
 	coordinator, err := client.Coordinator(group)
 	if err != nil {
 		failf("failed to get coordinating broker for group=%s err=%v", group, err)
 	}
 
-	//r, err := (*coordinator).GetConsumerMetadata(&sarama.ConsumerMetadataRequest{
-	//group,
-	//})
-	//fmt.Println(r, err)
-
-	//r, err := (*coordinator).ListGroups(&sarama.ListGroupsRequest{})
-	//fmt.Println(r, err)
-
 	response, err := (*coordinator).DescribeGroups(&sarama.DescribeGroupsRequest{
 		[]string{group},
-		// other groups may have different coordinator
+		// other groups may have different coordinator but can try to batch it
 		//groups,
 	})
 	if err != nil {
 		failf("failed to get group info for group=%s err=%v", group, err)
 	}
-
-	//topicOwners := make(map[string]map[int32]string)
-	topicOwners := make(map[string]map[int32]partitionOwner)
-
-	//test := map[int32]partitionOwner{
-	//int32(0): partitionOwner{"logstash", "host"},
-	//}
-	//fmt.Println(test)
-	//topicOwners["moawsl_dev"] = test
-
-	//topicOwners["moawsl_dev2"][int32(0)] = partitionOwner{"logstash", "host"}
-
-	//fmt.Println(topicOwners)
-	//os.Exit(0)
 
 	for _, groupInfo := range response.Groups {
 		err := (*groupInfo).Err
@@ -139,10 +120,9 @@ func main() {
 
 		for _, memberInfo := range members {
 			//fmt.Println("\n")
-
-			//fmt.Println(k)
 			//fmt.Println(memberInfo.ClientId, memberInfo.ClientHost)
 
+			// see if we can use this too
 			//memberMetadata, _ := memberInfo.GetMemberMetadata()
 			//fmt.Println(*memberMetadata)
 
@@ -169,12 +149,12 @@ func main() {
 
 					//fmt.Println(topicOwners)
 				}
-
-				//fmt.Println(topicOwners)
 			}
 		}
 	}
 	//fmt.Println(topicOwners)
+
+	// -----------------------------------------------------------------------
 
 	topicPartitions := map[string][]int32{}
 	for topic := range topicOwners {
@@ -184,6 +164,8 @@ func main() {
 		topicPartitions[topic] = partitions
 	}
 	//fmt.Println(topicPartitions)
+
+	// -----------------------------------------------------------------------
 
 	offsetManager, err := sarama.NewOffsetManagerFromClient(group, client)
 	if err != nil {
@@ -224,4 +206,7 @@ func main() {
 		}
 	}
 
+	// -----------------------------------------------------------------------
+
+	// TODO implement reporting to other sources
 }
