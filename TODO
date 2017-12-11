@@ -1,0 +1,35 @@
+#
+
+------------
+NEW FEATURES
+------------
+
+support for multiple groups
+reporting to other sources
+reverse DNS lookup for owners
+
+interval based reporting
+report for all groups
+
+example grafana dashboard
+expose http endpoint for stats/profiling
+
+------------
+IMPROVEMENTS
+------------
+
+goroutines for concurrency
+channel based reporting
+interface based reporters
+
+refactor main into separate functions
+mature logging and debug logs
+config file or environment variable
+code cleanup and shortcuts
+
+full metadata: try with false. Default is true
+don't dereference pointers for method calls
+memberassignment catch the error
+mapping partitions for each topic to their owners. more types here maybe...
+
+profile and measure
